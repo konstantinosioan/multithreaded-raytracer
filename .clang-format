@@ -1,0 +1,19 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Always
+TabWidth: 4
+BreakBeforeBraces: Allman
+ColumnLimit: 80
+AlignConsecutiveAssignments: true
+AlignTrailingComments: true
+ReflowComments: false
+
+# Own header -> project headers -> stdlib, alphabetical within each group.
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:        '^".*"$'
+    Priority:     1
+    SortPriority: 1
+  - Regex:        '^<.*>$'
+    Priority:     2
+    SortPriority: 2
