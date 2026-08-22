@@ -7,6 +7,8 @@ ColumnLimit: 80
 AlignConsecutiveAssignments: true
 AlignTrailingComments: true
 ReflowComments: false
+PointerAlignment: Left
+ReferenceAlignment: Left
 
 # Own header -> project headers -> stdlib, alphabetical within each group.
 IncludeBlocks: Regroup
