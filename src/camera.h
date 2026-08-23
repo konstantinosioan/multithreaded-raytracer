@@ -7,10 +7,14 @@
 #include "material.h"
 #include "ray.h"
 #include "rtweekend.h"
+#include "tile.h"
 #include "vec3.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
+#include <vector>
 
 /// @brief Casts rays into a scene and writes out the resulting image
 /// @note Set the public parameters directly, then call render(); the
@@ -27,6 +31,7 @@ class Camera
 	point3 lookat{0, 0, -1};   // Point camera is looking at
 	Vec3 vup{0, 1, 0};		   // Camera-relative "up" direction
 	double defocus_angle{0};   // Variation angle of rays through each pixel
+	int tile_size{32}; // Width and height of each tile of work, in pixels
 
 	// Distance from camera lookfrom point to plane of perfect focus
 	double focus_dist{10};
@@ -37,42 +42,42 @@ class Camera
 	{
 		initialise();
 
+		const int tile_count{static_cast<int>(std::size(tiles))};
+
+		// Phase 1: render every tile into the framebuffer
+		for (int i{0}; i < tile_count; ++i)
+		{
+			// Progress indicator used to identify a run that's stalled out due
+			// to an infinite loop or any other problem
+			std::clog << "\rTiles remaining: " << tile_count - i << ' '
+					  << std::flush;
+
+			render_tile(i, world);
+		}
+
+		// Phase 2: write the framebuffer out as PPM
 		std::cout << "P3\n"
 				  << image_width << ' ' << image_height << '\n'
 				  << MAX_COLOUR_VALUE << '\n';
 
 		// Each pixel is written out left to right, and each row of pixels is
 		// written out top to bottom
-		for (int j{0}; j < image_height; ++j)
+		for (const colour& pixel : framebuffer)
 		{
-			// Progress indicator used to identify a run that's stalled out due
-			// to an infinite loop or any other problem
-			std::clog << "\rScanlines remaining: " << image_height - j << ' '
-					  << std::flush;
-
-			for (int i{0}; i < image_width; ++i)
-			{
-				colour pixel_colour{0, 0, 0};
-
-				for (int sample{0}; sample < samples_per_pixel; ++sample)
-				{
-					Ray r{get_ray(i, j)};
-					pixel_colour += ray_colour(r, max_depth, world);
-				}
-
-				write_colour(std::cout, pixel_samples_scale * pixel_colour);
-			}
+			write_colour(std::cout, pixel);
 		}
 
 		std::clog << "\rDone.                 \n";
 	}
 
   private:
-	int image_height{};	  // Rendered image height
-	point3 center{};	  // Camera center
-	point3 pixel00_loc{}; // Location of pixel 0, 0
-	Vec3 pixel_delta_u{}; // Offset to pixel to the right
-	Vec3 pixel_delta_v{}; // Offset to pixel below
+	int image_height{};				   // Rendered image height
+	point3 center{};				   // Camera center
+	point3 pixel00_loc{};			   // Location of pixel 0, 0
+	Vec3 pixel_delta_u{};			   // Offset to pixel to the right
+	Vec3 pixel_delta_v{};			   // Offset to pixel below
+	std::vector<Tile> tiles{};		   // Tiles the image is divided into
+	std::vector<colour> framebuffer{}; // Rendered pixels in row-major order
 
 	// Camera frame basis vectors
 	Vec3 u{};
@@ -86,7 +91,8 @@ class Camera
 	double pixel_samples_scale{};
 
 	/// @brief Works out the viewport, pixel grid and defocus disk from the
-	///        public parameters, ready for rendering
+	///        public parameters, then divides the image into tiles and
+	///        allocates the framebuffer, ready for rendering
 	void initialise()
 	{
 		// Calculate the image height and ensure it's at least 1
@@ -132,6 +138,61 @@ class Camera
 							  std::tan(degrees_to_radians(defocus_angle / 2))};
 		defocus_disk_u = u * defocus_radius;
 		defocus_disk_v = v * defocus_radius;
+
+		// divide the image into tiles of work
+		// clear first since initialise() runs on every render() call
+		tiles.clear();
+
+		// A tile size below 1 would loop forever
+		tile_size = (tile_size < 1) ? 1 : tile_size;
+
+		for (int y{0}; y < image_height; y += tile_size)
+		{
+			for (int x{0}; x < image_width; x += tile_size)
+			{
+				Tile tile{};
+
+				tile.x_start = x;
+				tile.x_end	 = std::min(x + tile_size, image_width);
+				tile.y_start = y;
+				tile.y_end	 = std::min(y + tile_size, image_height);
+
+				tiles.push_back(tile);
+			}
+		}
+
+		// allocate the output buffer, one colour per pixel
+		framebuffer.assign(static_cast<std::size_t>(image_height * image_width),
+						   colour{});
+	}
+
+	/// @brief Renders one tile's pixels into the framebuffer
+	/// @param index Which tile to render, as a position in the tile list
+	/// @param world The scene to test rays against
+	/// @note Tiles never overlap, so no two calls write the same pixel
+	void render_tile(int index, const Hittable& world)
+	{
+		const Tile& tile{tiles[static_cast<std::size_t>(index)]};
+
+		// Seed before any sampling, so the tile renders the same either way
+		seed_generator(index);
+
+		for (int y{tile.y_start}; y < tile.y_end; ++y)
+		{
+			for (int x{tile.x_start}; x < tile.x_end; ++x)
+			{
+				colour pixel_colour{0, 0, 0};
+
+				for (int sample{0}; sample < samples_per_pixel; ++sample)
+				{
+					Ray r{get_ray(x, y)};
+					pixel_colour += ray_colour(r, max_depth, world);
+				}
+
+				framebuffer[static_cast<std::size_t>(y * image_width + x)] =
+					pixel_samples_scale * pixel_colour;
+			}
+		}
 	}
 
 	/// @brief Constructs a camera ray directed at a randomly sampled point

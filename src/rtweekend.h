@@ -1,7 +1,6 @@
 #ifndef RTWEEKEND_H
 #define RTWEEKEND_H
 
-#include <chrono>
 #include <limits>
 #include <random>
 
@@ -16,27 +15,25 @@ inline double degrees_to_radians(double degrees)
 	return degrees * PI / 180.0;
 }
 
+// thread_local, so each worker owns its generator and threads never share
+// RNG state
+inline thread_local std::mt19937 generator{};
+
+/// @brief Reseeds this thread's generator from a tile index
+/// @param tile_index The tile about to be rendered
+/// @note Seeding from the tile rather than the thread is what makes the
+///       render reproducible, whichever worker claims the tile
+/// @note seed_seq mixes the index, so neighbouring tiles get unrelated
+///       sequences instead of near-identical ones
+inline void seed_generator(int tile_index)
+{
+	std::seed_seq ss{tile_index};
+	generator.seed(ss);
+}
+
 /// @brief Returns a random real number in [0, 1)
 inline double random_double()
 {
-	static std::mt19937 generator{
-		[]()
-		{
-			std::random_device rd{};
-			std::seed_seq ss{static_cast<std::seed_seq::result_type>(
-								 std::chrono::steady_clock::now()
-									 .time_since_epoch()
-									 .count()),
-							 rd(),
-							 rd(),
-							 rd(),
-							 rd(),
-							 rd(),
-							 rd(),
-							 rd()};
-			return std::mt19937{ss};
-		}()};
-
 	return std::uniform_real_distribution<double>{0.0, 1.0}(generator);
 }
 
