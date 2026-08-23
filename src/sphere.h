@@ -2,32 +2,35 @@
 #define SPHERE_H
 
 #include "hittable.h"
+#include "interval.h"
+#include "material.h"
 #include "vec3.h"
 
 #include <cmath>
+#include <memory>
+#include <utility>
 
 /// @brief A sphere, hittable by a ray
-class sphere final : public hittable
+class Sphere final : public Hittable
 {
   public:
-	/// @brief Constructs a sphere from a center and radius
+	/// @brief Constructs a sphere from a center, radius and material
 	/// @param center The sphere's center
 	/// @param radius The sphere's radius; negative values are clamped to zero
-	sphere(const point3& center, double radius)
-		: center{center}, radius{std::fmax(0, radius)}
+	/// @param mat The sphere's material; ownership is shared with the caller
+	Sphere(const point3& center, double radius, std::shared_ptr<Material> mat)
+		: center{center}, radius{std::fmax(0, radius)}, mat{std::move(mat)}
 	{
 	}
 
 	/// @brief Tests whether a ray intersects this sphere within a t-range
 	/// @param r The ray to test
-	/// @param ray_tmin The lower bound of the acceptable hit range, exclusive
-	/// @param ray_tmax The upper bound of the acceptable hit range, exclusive
+	/// @param ray_t The acceptable hit range
 	/// @param rec Output parameter, only filled in if a hit occurs
-	/// @return True if the ray hits this sphere within [ray_tmin, ray_tmax]
-	bool hit(const ray& r, double ray_tmin, double ray_tmax,
-			 hit_record& rec) const override
+	/// @return True if the ray hits this sphere within ray_t
+	bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override
 	{
-		vec3 oc{center - r.origin()};
+		Vec3 oc{center - r.origin()};
 		double a{r.direction().length_squared()};
 		double h{dot(r.direction(), oc)};
 		double c{oc.length_squared() - radius * radius};
@@ -43,11 +46,11 @@ class sphere final : public hittable
 		// find the nearest root that lies in the acceptable range
 		double root{(h - sqrtd) / a};
 
-		if (root <= ray_tmin || root >= ray_tmax)
+		if (!ray_t.surrounds(root))
 		{
 			root = (h + sqrtd) / a;
 
-			if (root <= ray_tmin || root >= ray_tmax)
+			if (!ray_t.surrounds(root))
 			{
 				return false;
 			}
@@ -55,8 +58,9 @@ class sphere final : public hittable
 
 		rec.t = root;
 		rec.p = r.at(rec.t);
-		vec3 outward_normal{(rec.p - center) / radius};
+		Vec3 outward_normal{(rec.p - center) / radius};
 		rec.set_face_normal(r, outward_normal);
+		rec.mat = mat;
 
 		return true;
 	}
@@ -64,6 +68,7 @@ class sphere final : public hittable
   private:
 	point3 center{};
 	double radius{};
+	std::shared_ptr<Material> mat{};
 };
 
 #endif // SPHERE_H

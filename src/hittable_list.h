@@ -2,6 +2,7 @@
 #define HITTABLE_LIST_H
 
 #include "hittable.h"
+#include "interval.h"
 
 #include <memory>
 #include <utility>
@@ -9,17 +10,17 @@
 
 /// @brief A collection of hittable objects, itself hittable -
 ///        returns the closest intersection among everything it contains
-class hittable_list final : public hittable
+class HittableList final : public Hittable
 {
   public:
-	std::vector<std::shared_ptr<hittable>> objects{};
+	std::vector<std::shared_ptr<Hittable>> objects{};
 
 	/// @brief Constructs an empty list
-	hittable_list() = default;
+	HittableList() = default;
 
 	/// @brief Constructs a list containing a single object
 	/// @param object The object to add
-	explicit hittable_list(std::shared_ptr<hittable> object)
+	explicit HittableList(std::shared_ptr<Hittable> object)
 	{
 		add(std::move(object));
 	}
@@ -29,27 +30,25 @@ class hittable_list final : public hittable
 
 	/// @brief Adds an object to the list
 	/// @param object The object to add; ownership is shared with the caller
-	void add(std::shared_ptr<hittable> object)
+	void add(std::shared_ptr<Hittable> object)
 	{
 		objects.push_back(std::move(object));
 	}
 
 	/// @brief Finds the closest intersection among every object in the list
 	/// @param r The ray to test
-	/// @param ray_tmin The lower bound of the acceptable hit range, exclusive
-	/// @param ray_tmax The upper bound of the acceptable hit range, exclusive
+	/// @param ray_t The acceptable hit range
 	/// @param rec Output parameter, filled in with the closest hit if any exists
 	/// @return True if the ray hits at least one object in the list
-	bool hit(const ray& r, double ray_tmin, double ray_tmax,
-			 hit_record& rec) const override
+	bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override
 	{
-		hit_record temp_rec{};
+		HitRecord temp_rec{};
 		bool hit_anything{false};
-		double closest_so_far{ray_tmax};
+		double closest_so_far{ray_t.max};
 
 		for (const auto& object : objects)
 		{
-			if (object->hit(r, ray_tmin, closest_so_far, temp_rec))
+			if (object->hit(r, Interval(ray_t.min, closest_so_far), temp_rec))
 			{
 				hit_anything   = true;
 				closest_so_far = temp_rec.t;
