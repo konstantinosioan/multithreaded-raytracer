@@ -29,7 +29,8 @@ class HittableList final : public Hittable
 	void clear() { objects.clear(); }
 
 	/// @brief Adds an object to the list
-	/// @param object The object to add; ownership is shared with the caller
+	/// @param object The object to add, shared with the caller unless
+	///        moved in
 	void add(std::shared_ptr<Hittable> object)
 	{
 		objects.push_back(std::move(object));

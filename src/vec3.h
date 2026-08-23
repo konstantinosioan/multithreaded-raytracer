@@ -195,6 +195,21 @@ inline Vec3 cross(const Vec3& u, const Vec3& v)
 /// @return v scaled to length 1
 inline Vec3 unit_vector(const Vec3& v) { return v / v.length(); }
 
+/// @brief Returns a random point inside the unit disk on the xy plane
+/// @note The z component is always zero
+inline Vec3 random_in_unit_disk()
+{
+	while (true)
+	{
+		Vec3 p{random_double(-1, 1), random_double(-1, 1), 0};
+
+		if (p.length_squared() < 1)
+		{
+			return p;
+		}
+	}
+}
+
 /// @brief Returns a random unit-length vector, uniformly distributed over
 ///        the surface of the unit sphere
 inline Vec3 random_unit_vector()

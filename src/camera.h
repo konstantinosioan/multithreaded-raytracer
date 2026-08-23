@@ -9,6 +9,7 @@
 #include "rtweekend.h"
 #include "vec3.h"
 
+#include <cmath>
 #include <iostream>
 
 /// @brief Casts rays into a scene and writes out the resulting image
@@ -21,6 +22,14 @@ class Camera
 	int image_width{100};	   // Rendered image width in pixel count
 	int samples_per_pixel{10}; // Count of random samples for each pixel
 	int max_depth{10};		   // Maximum number of ray bounces into scene
+	double vfov{90};		   // Vertical view angle (field of view)
+	point3 lookfrom{0, 0, 0};  // Point camera is looking from
+	point3 lookat{0, 0, -1};   // Point camera is looking at
+	Vec3 vup{0, 1, 0};		   // Camera-relative "up" direction
+	double defocus_angle{0};   // Variation angle of rays through each pixel
+
+	// Distance from camera lookfrom point to plane of perfect focus
+	double focus_dist{10};
 
 	/// @brief Renders the scene to stdout as a PPM image
 	/// @param world The scene to render
@@ -65,11 +74,19 @@ class Camera
 	Vec3 pixel_delta_u{}; // Offset to pixel to the right
 	Vec3 pixel_delta_v{}; // Offset to pixel below
 
+	// Camera frame basis vectors
+	Vec3 u{};
+	Vec3 v{};
+	Vec3 w{};
+
+	Vec3 defocus_disk_u{}; // Defocus disk horizontal radius
+	Vec3 defocus_disk_v{}; // Defocus disk vertical radius
+
 	// Colour scale factor for a sum of pixel samples
 	double pixel_samples_scale{};
 
-	/// @brief Works out the viewport and pixel grid from the public
-	///        parameters, ready for rendering
+	/// @brief Works out the viewport, pixel grid and defocus disk from the
+	///        public parameters, ready for rendering
 	void initialise()
 	{
 		// Calculate the image height and ensure it's at least 1
@@ -78,41 +95,58 @@ class Camera
 
 		pixel_samples_scale = 1.0 / samples_per_pixel;
 
-		center = point3(0, 0, 0);
+		center = lookfrom;
 
 		// Determine viewport dimensions
-		constexpr double focal_length{1.0};
-		constexpr double viewport_height{2.0};
+		// Half the viewport height subtends half the fov at focus_dist
+		double theta{degrees_to_radians(vfov)};
+		double h{std::tan(theta / 2)};
+		double viewport_height{2 * h * focus_dist};
 		double viewport_width{
 			viewport_height *
 			(static_cast<double>(image_width) / image_height)};
 
+		// Calculate the u, v, w unit basis vectors for the camera coordinate frame
+		w = unit_vector(lookfrom - lookat);
+		u = unit_vector(cross(vup, w));
+		v = cross(w, u);
+
 		// Calculate the vectors across the horizontal and down the vertical viewport edges
-		Vec3 viewport_u{viewport_width, 0, 0};
-		Vec3 viewport_v{0, -viewport_height, 0};
+		// Vector across viewport horizontal edge
+		Vec3 viewport_u{viewport_width * u};
+		// Vector down viewport vertical edge
+		Vec3 viewport_v{viewport_height * -v};
 
 		// calculate the horizontal and vertical delta vectors from pixel to pixel
 		pixel_delta_u = viewport_u / image_width;
 		pixel_delta_v = viewport_v / image_height;
 
 		// calculate the location of the upper left pixel
-		point3 viewport_upper_left{center - Vec3(0, 0, focal_length) -
-								   viewport_u / 2 - viewport_v / 2};
+		point3 viewport_upper_left{center - focus_dist * w - viewport_u / 2 -
+								   viewport_v / 2};
 		pixel00_loc =
 			viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+		// calculate the camera defocus disk basis vectors
+		double defocus_radius{focus_dist *
+							  std::tan(degrees_to_radians(defocus_angle / 2))};
+		defocus_disk_u = u * defocus_radius;
+		defocus_disk_v = v * defocus_radius;
 	}
 
-	/// @brief Constructs a camera ray originating from the origin and
-	///        directed at randomly sampled point around pixel location i, j
+	/// @brief Constructs a camera ray directed at a randomly sampled point
+	///        around pixel location i, j
 	/// @param i The pixel's column index
 	/// @param j The pixel's row index
-	/// @return A ray from the camera center toward the sampled point
+	/// @return A ray toward the sampled point, starting from the defocus
+	///         disk if defocus is enabled and the camera centre otherwise
 	Ray get_ray(int i, int j) const
 	{
 		Vec3 offset{sample_square()};
 		point3 pixel_sample{pixel00_loc + ((i + offset.x()) * pixel_delta_u) +
 							((j + offset.y()) * pixel_delta_v)};
-		point3 ray_origin{center};
+		point3 ray_origin{(defocus_angle <= 0) ? center
+											   : defocus_disk_sample()};
 		Vec3 ray_direction{pixel_sample - ray_origin};
 
 		return Ray{ray_origin, ray_direction};
@@ -125,12 +159,19 @@ class Camera
 		return Vec3{random_double() - 0.5, random_double() - 0.5, 0};
 	}
 
+	/// @brief Returns a random point in the camera defocus disk
+	point3 defocus_disk_sample() const
+	{
+		point3 p{random_in_unit_disk()};
+		return center + p[0] * defocus_disk_u + p[1] * defocus_disk_v;
+	}
+
 	/// @brief Computes the colour seen along a ray: the shaded surface colour
 	///        if it hits something in world, otherwise the sky gradient
 	/// @param r The ray to trace
 	/// @param depth Remaining bounces; recursion stops at 0
 	/// @param world The scene to test against
-	/// @return The colour to write for this ray
+	/// @return The colour seen along this one ray, before averaging
 	/// @note Capping depth darkens an over-deep ray instead of overflowing
 	///       the stack
 	colour ray_colour(const Ray& r, int depth, const Hittable& world) const

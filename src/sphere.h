@@ -17,7 +17,8 @@ class Sphere final : public Hittable
 	/// @brief Constructs a sphere from a center, radius and material
 	/// @param center The sphere's center
 	/// @param radius The sphere's radius; negative values are clamped to zero
-	/// @param mat The sphere's material; ownership is shared with the caller
+	/// @param mat The sphere's material, shared with the caller unless
+	///        moved in
 	Sphere(const point3& center, double radius, std::shared_ptr<Material> mat)
 		: center{center}, radius{std::fmax(0, radius)}, mat{std::move(mat)}
 	{

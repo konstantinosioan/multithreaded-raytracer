@@ -173,7 +173,8 @@ class Dielectric final : public Material
 	/// @brief Returns how likely the surface is to reflect rather than
 	///        refract at the given angle
 	/// @param cosine The cosine of the angle between the ray and the normal
-	/// @param refraction_index The material's refractive index
+	/// @param refraction_index The effective index ratio at this surface,
+	///        which depends on whether the ray is entering or leaving
 	/// @note Real glass turns mirror-like at glancing angles, which is
 	///       what this captures
 	static double reflectance(double cosine, double refraction_index)

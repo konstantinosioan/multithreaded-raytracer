@@ -13,6 +13,8 @@ constexpr int MAX_COLOUR_VALUE{255};
 /// @brief Converts a colour component from linear space to gamma space
 /// @param linear_component The component to convert
 /// @note Uses a gamma of 2, so the transform is just a square root
+/// @note Non-positive components return 0, since the square root of a
+///       negative has no meaning here
 inline double linear_to_gamma(double linear_component)
 {
 	if (linear_component > 0)
@@ -26,9 +28,10 @@ inline double linear_to_gamma(double linear_component)
 /// @brief Writes a single pixel's colour to a stream as three
 ///        space-separated byte values
 /// @param out The output stream
-/// @param pixel_colour The colour to write; components may exceed [0, 1]
-///        (e.g. from summed multi-sample averaging) and will be clamped
-/// @note Components are clamped to [0, 1] before being scaled to a byte
+/// @param pixel_colour The colour to write, expected in [0, 1]; anything
+///        outside that range is clamped rather than rejected
+/// @note Components are clamped just below 1 before being scaled, since
+///       exactly 1 would scale to 256 and overflow the byte range
 inline void write_colour(std::ostream& out, const colour& pixel_colour)
 {
 	double r{pixel_colour.x()};
