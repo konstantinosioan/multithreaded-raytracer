@@ -4,8 +4,10 @@
 #include "material.h"
 #include "rtweekend.h"
 #include "sphere.h"
+#include "timer.h"
 #include "vec3.h"
 
+#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -79,5 +81,11 @@ int main()
 	cam.defocus_angle	  = 0.6;
 	cam.focus_dist		  = 10.0;
 
+	Timer timer{};
+
 	cam.render(world);
+
+	std::clog << "Time elapsed: " << timer.elapsed() << " seconds\n";
+
+	return 0;
 }
