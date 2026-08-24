@@ -11,9 +11,11 @@
 #include "vec3.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 /// @brief Casts rays into a scene and writes out the resulting image
@@ -33,29 +35,54 @@ class Camera
 	double defocus_angle{0};   // Variation angle of rays through each pixel
 	int tile_size{32}; // Width and height of each tile of work, in pixels
 
+	// Number of worker threads to render with
+	int thread_count{static_cast<int>(std::thread::hardware_concurrency())};
+
 	// Distance from camera lookfrom point to plane of perfect focus
 	double focus_dist{10};
 
 	/// @brief Renders the scene to stdout as a PPM image
 	/// @param world The scene to render
+	/// @note Workers claim tiles from a shared atomic counter, so the
+	///       output is identical however many threads are used
 	void render(const Hittable& world)
 	{
 		initialise();
 
 		const int tile_count{static_cast<int>(std::size(tiles))};
+		std::atomic<int> next_tile{0};
+		std::vector<std::thread> workers{};
 
-		// Phase 1: render every tile into the framebuffer
-		for (int i{0}; i < tile_count; ++i)
+		std::clog << "Rendering with " << thread_count << " threads\n"
+				  << std::flush;
+
+		for (int worker{0}; worker < thread_count; ++worker)
 		{
-			// Progress indicator used to identify a run that's stalled out due
-			// to an infinite loop or any other problem
-			std::clog << "\rTiles remaining: " << tile_count - i << ' '
-					  << std::flush;
+			workers.emplace_back(
+				[this, &next_tile, &world, tile_count]()
+				{
+					while (true)
+					{
+						// fetch_add returns the value before incrementing,
+						// so no two workers ever claim the same tile
+						int tile_index{next_tile.fetch_add(1)};
 
-			render_tile(i, world);
+						if (tile_index >= tile_count)
+						{
+							break;
+						}
+
+						render_tile(tile_index, world);
+					}
+				});
 		}
 
-		// Phase 2: write the framebuffer out as PPM
+		for (auto& worker : workers)
+		{
+			worker.join();
+		}
+
+		// Write the framebuffer out as PPM
 		std::cout << "P3\n"
 				  << image_width << ' ' << image_height << '\n'
 				  << MAX_COLOUR_VALUE << '\n';
@@ -67,7 +94,7 @@ class Camera
 			write_colour(std::cout, pixel);
 		}
 
-		std::clog << "\rDone.                 \n";
+		std::clog << "Done.\n";
 	}
 
   private:
@@ -145,6 +172,9 @@ class Camera
 
 		// A tile size below 1 would loop forever
 		tile_size = (tile_size < 1) ? 1 : tile_size;
+
+		// hardware_concurrency() reports 0 when it cannot detect the count
+		thread_count = (thread_count < 1) ? 1 : thread_count;
 
 		for (int y{0}; y < image_height; y += tile_size)
 		{

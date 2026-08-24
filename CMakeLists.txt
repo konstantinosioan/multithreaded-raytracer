@@ -14,8 +14,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# macOS needs nothing extra for std::thread, but Linux must link pthread
+find_package(Threads REQUIRED)
+
 add_executable(raytracer src/main.cpp)
 
 target_compile_options(raytracer PRIVATE
     -Wall -Wextra -Wconversion -Wsign-conversion -Wshadow
     -Wold-style-cast -pedantic-errors)
+
+target_link_libraries(raytracer PRIVATE Threads::Threads)
