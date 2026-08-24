@@ -5,8 +5,6 @@
 #include "ray.h"
 #include "vec3.h"
 
-#include <memory>
-
 class Material;
 
 /// @brief Bundles the result of a successful ray-object intersection: the
@@ -17,7 +15,8 @@ class HitRecord
   public:
 	point3 p{};
 	Vec3 normal{};
-	std::shared_ptr<Material> mat{};
+	// Non-owning: the Sphere owns the material and outlives every HitRecord
+	const Material* mat{nullptr};
 	double t{};
 	bool front_face{};
 
