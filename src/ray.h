@@ -19,15 +19,15 @@ class Ray
 	}
 
 	/// @brief Returns the ray's origin point
-	const point3& origin() const { return orig; }
+	[[nodiscard]] const point3& origin() const { return orig; }
 
 	/// @brief Returns the ray's direction vector
-	const Vec3& direction() const { return dir; }
+	[[nodiscard]] const Vec3& direction() const { return dir; }
 
 	/// @brief Returns the point at parameter t along the ray
 	/// @param t The ray parameter; t = 0 is the origin, increasing t moves
 	///          along direction, negative t moves the opposite way
-	point3 at(double t) const { return orig + t * dir; }
+	[[nodiscard]] point3 at(double t) const { return orig + t * dir; }
 
   private:
 	point3 orig{};

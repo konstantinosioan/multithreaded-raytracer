@@ -15,7 +15,7 @@ class Timer final
 
 	/// @brief Returns the seconds elapsed since construction or the last
 	///        reset()
-	double elapsed() const
+	[[nodiscard]] double elapsed() const
 	{
 		return std::chrono::duration_cast<Second>(Clock::now() - beg).count();
 	}

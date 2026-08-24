@@ -21,21 +21,27 @@ class Interval
 	Interval(double min, double max) : min{min}, max{max} {}
 
 	/// @brief Returns how wide the interval is
-	double size() const { return max - min; }
+	[[nodiscard]] double size() const { return max - min; }
 
 	/// @brief Returns whether x falls within the interval, bounds included
 	/// @param x The value to test
-	bool contains(double x) const { return min <= x && max >= x; }
+	[[nodiscard]] bool contains(double x) const
+	{
+		return min <= x && max >= x;
+	}
 
 	/// @brief Returns whether x falls strictly inside the interval
 	/// @param x The value to test
 	/// @note Unlike contains(), a value sitting exactly on a bound does
 	///       not count
-	bool surrounds(double x) const { return min < x && max > x; }
+	[[nodiscard]] bool surrounds(double x) const
+	{
+		return min < x && max > x;
+	}
 
 	/// @brief Returns x pulled back into the interval if it falls outside
 	/// @param x The value to clamp
-	double clamp(double x) const
+	[[nodiscard]] double clamp(double x) const
 	{
 		if (x < min)
 		{

@@ -192,7 +192,8 @@ class Camera
 		}
 
 		// allocate the output buffer, one colour per pixel
-		framebuffer.assign(static_cast<std::size_t>(image_height * image_width),
+		framebuffer.assign(static_cast<std::size_t>(image_height) *
+							   static_cast<std::size_t>(image_width),
 						   colour{});
 	}
 
@@ -219,7 +220,9 @@ class Camera
 					pixel_colour += ray_colour(r, max_depth, world);
 				}
 
-				framebuffer[static_cast<std::size_t>(y * image_width + x)] =
+				framebuffer[static_cast<std::size_t>(y) *
+								static_cast<std::size_t>(image_width) +
+							static_cast<std::size_t>(x)] =
 					pixel_samples_scale * pixel_colour;
 			}
 		}
@@ -231,7 +234,7 @@ class Camera
 	/// @param j The pixel's row index
 	/// @return A ray toward the sampled point, starting from the defocus
 	///         disk if defocus is enabled and the camera centre otherwise
-	Ray get_ray(int i, int j) const
+	[[nodiscard]] Ray get_ray(int i, int j) const
 	{
 		Vec3 offset{sample_square()};
 		point3 pixel_sample{pixel00_loc + ((i + offset.x()) * pixel_delta_u) +
@@ -245,13 +248,13 @@ class Camera
 
 	/// @brief Returns the vector to a random point in the
 	///        [-.5, -.5]-[+.5, +.5] unit square
-	Vec3 sample_square() const
+	[[nodiscard]] static Vec3 sample_square()
 	{
 		return Vec3{random_double() - 0.5, random_double() - 0.5, 0};
 	}
 
 	/// @brief Returns a random point in the camera defocus disk
-	point3 defocus_disk_sample() const
+	[[nodiscard]] point3 defocus_disk_sample() const
 	{
 		point3 p{random_in_unit_disk()};
 		return center + p[0] * defocus_disk_u + p[1] * defocus_disk_v;
@@ -265,7 +268,8 @@ class Camera
 	/// @return The colour seen along this one ray, before averaging
 	/// @note Capping depth darkens an over-deep ray instead of overflowing
 	///       the stack
-	colour ray_colour(const Ray& r, int depth, const Hittable& world) const
+	[[nodiscard]] colour ray_colour(const Ray& r, int depth,
+									const Hittable& world) const
 	{
 		// If we've exceeded the ray bounce limit, no more light is gathered
 		if (depth <= 0)

@@ -21,13 +21,13 @@ class Vec3
 	Vec3(double e0, double e1, double e2) : e{e0, e1, e2} {}
 
 	/// @brief Returns the x component
-	double x() const { return e[0]; }
+	[[nodiscard]] double x() const { return e[0]; }
 
 	/// @brief Returns the y component
-	double y() const { return e[1]; }
+	[[nodiscard]] double y() const { return e[1]; }
 
 	/// @brief Returns the z component
-	double z() const { return e[2]; }
+	[[nodiscard]] double z() const { return e[2]; }
 
 	/// @brief Returns the negation of this vector
 	Vec3 operator-() const { return Vec3(-e[0], -e[1], -e[2]); }
@@ -73,18 +73,21 @@ class Vec3
 	Vec3& operator/=(double t) { return *this *= 1 / t; }
 
 	/// @brief Returns the Euclidean length of this vector
-	double length() const { return std::sqrt(length_squared()); }
+	[[nodiscard]] double length() const
+	{
+		return std::sqrt(length_squared());
+	}
 
 	/// @brief Returns the squared length of this vector
 	/// @note Avoids the sqrt() that length() requires; prefer this when only
 	///       comparing magnitudes rather than needing the actual length
-	double length_squared() const
+	[[nodiscard]] double length_squared() const
 	{
 		return e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
 	}
 
 	/// @brief Returns true if the vector is close to zero in all dimensions
-	bool near_zero() const
+	[[nodiscard]] bool near_zero() const
 	{
 		constexpr double epsilon{1e-8};
 		return (std::fabs(e[0]) < epsilon) && (std::fabs(e[1]) < epsilon) &&
@@ -242,10 +245,8 @@ inline Vec3 random_on_hemisphere(const Vec3& normal)
 	{
 		return on_unit_sphere;
 	}
-	else
-	{
-		return -on_unit_sphere;
-	}
+
+	return -on_unit_sphere;
 }
 
 /// @brief Mirrors a vector about a surface normal

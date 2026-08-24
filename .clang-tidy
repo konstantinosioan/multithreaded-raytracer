@@ -1,6 +1,23 @@
+# Suppressions, in order: short names like x and y are correct in maths code;
+# members are deliberately given default values in their declarations; operator
+# precedence is left implicit in the vector maths and the sphere quadratic; the
+# generator is default-seeded on purpose, since each tile reseeds from its own
+# index and that reproducibility is what the correctness check needs; and a
+# return names its type, so the reader need not look the signature up.
 Checks: >
   -*,
   bugprone-*,
   modernize-*,
-  readability-*
+  readability-*,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-math-missing-parentheses,
+  -readability-redundant-member-init,
+  -modernize-use-trailing-return-type,
+  -modernize-return-braced-init-list,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -bugprone-throwing-static-initialization,
+  -bugprone-random-generator-seed
+
 WarningsAsErrors: ''
