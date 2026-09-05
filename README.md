@@ -153,3 +153,9 @@ This was built following '[_Ray Tracing in One Weekend_](https://raytracing.gith
 - **Date**: 2025-04-25
 - **URL (series)**: https://raytracing.github.io
 - **URL (book)**: https://raytracing.github.io/books/RayTracingInOneWeekend.html
+
+## License
+
+This repository is under the MIT license, see [LICENSE](LICENSE).
+
+The book's own code is released under CC0, a public domain dedication, so it places no licensing conditions on anything built from it.
